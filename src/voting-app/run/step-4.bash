@@ -12,4 +12,4 @@ dotnet restore
 dotnet publish -c release --self-contained false --no-restore
 
 # Lancement du serveur
-dotnet bin/release/net7.0/Worker.dll
+dotnet bin/release/net9.0/Worker.dll

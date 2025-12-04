@@ -10,3 +10,4 @@ pip install -r requirements.txt
 
 # Lancement du serveur
 python app.py
+    
