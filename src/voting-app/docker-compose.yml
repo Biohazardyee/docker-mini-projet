@@ -1,0 +1,94 @@
+services:
+
+  redis:
+    image: redis:7-alpine
+    command: [ "redis-server", "--appendonly", "yes" ]
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  db:
+    image: postgres:18.1
+    container_name: database
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: voting
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  vote:
+    build:
+      context: ./vote
+    ports:
+      - "8080:8080"
+    environment:
+      OPTION_A: ${OPTION_A}
+      OPTION_B: ${OPTION_B}
+      REDIS_HOST: redis
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+  worker:
+    build: ./worker
+    environment:
+      REDIS_HOST: redis
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: unless-stopped
+
+  result:
+    build: ./result
+    ports:
+      - "8081:80"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  frontend:
+  backend:
