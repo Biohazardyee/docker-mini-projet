@@ -1,32 +1,40 @@
-# Vagrantfile to create a 1-manager + 2-worker Docker Swarm cluster using VirtualBox
-# - Syncs project folder into /vagrant in each VM
-# - Provisions Docker on each VM and initializes swarm on manager
-# - Builds images on manager and shares saved image tarballs via /vagrant/images
+NODES = {
+  "manager1" => "192.168.99.100",
+  "worker1"  => "192.168.99.101",
+  "worker2"  => "192.168.99.102",
+}
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/jammy64"
-  config.vm.provider "virtualbox" do |vb|
-    vb.memory = 2048
-  end
+  NODES.each do |node_name, ip_address|
+    config.vm.define node_name do |node|
+      node.vm.box = "bento/ubuntu-22.04"
+      node.vm.hostname = node_name
+      node.vm.network "private_network", ip: ip_address
 
-  # Shared synced folder is the project root => /vagrant inside VMs
-
-  nodes = [
-    { :name => "manager", :ip => "192.168.56.101", :hostname => "manager" },
-    { :name => "worker1", :ip => "192.168.56.102", :hostname => "worker1" },
-    { :name => "worker2", :ip => "192.168.56.103", :hostname => "worker2" }
-  ]
-
-  nodes.each do |node|
-    config.vm.define node[:name] do |node_cfg|
-      node_cfg.vm.hostname = node[:hostname]
-      node_cfg.vm.network "private_network", ip: node[:ip]
-
-      # Provision with the shared script; pass role and ip
-      node_cfg.vm.provision "shell" do |s|
-        s.path = "scripts/vagrant/provision.sh"
-        s.args = [node[:name], node[:ip]]
+      node.vm.provider "virtualbox" do |v|
+        v.name = node_name
+        v.memory = 1024
+        v.cpus = 1
       end
+
+      node.vm.provision "shell", privileged: true, inline: <<-SHELL
+        set -e
+
+        # /etc/hosts pour la résolution des noms
+        #{NODES.map { |n, ip| "echo '#{ip} #{n}' >> /etc/hosts" }.join("\n")}
+
+        # Installer Docker (méthode officielle)
+        if ! command -v docker &> /dev/null; then
+          curl -fsSL https://get.docker.com | sh
+        fi
+
+        # Activer Docker au boot
+        systemctl enable docker
+        systemctl start docker
+
+        # Autoriser vagrant à utiliser Docker sans sudo
+        usermod -aG docker vagrant
+      SHELL
     end
   end
 end
