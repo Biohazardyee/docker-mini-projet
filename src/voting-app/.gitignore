@@ -13,4 +13,10 @@
 # Logs
 *.log
 
+join-token
+manager-ip
+
+.vagrant/
+images/
+
 .env

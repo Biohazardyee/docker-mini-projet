@@ -1,0 +1,32 @@
+# Vagrantfile to create a 1-manager + 2-worker Docker Swarm cluster using VirtualBox
+# - Syncs project folder into /vagrant in each VM
+# - Provisions Docker on each VM and initializes swarm on manager
+# - Builds images on manager and shares saved image tarballs via /vagrant/images
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/jammy64"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = 2048
+  end
+
+  # Shared synced folder is the project root => /vagrant inside VMs
+
+  nodes = [
+    { :name => "manager", :ip => "192.168.56.101", :hostname => "manager" },
+    { :name => "worker1", :ip => "192.168.56.102", :hostname => "worker1" },
+    { :name => "worker2", :ip => "192.168.56.103", :hostname => "worker2" }
+  ]
+
+  nodes.each do |node|
+    config.vm.define node[:name] do |node_cfg|
+      node_cfg.vm.hostname = node[:hostname]
+      node_cfg.vm.network "private_network", ip: node[:ip]
+
+      # Provision with the shared script; pass role and ip
+      node_cfg.vm.provision "shell" do |s|
+        s.path = "scripts/vagrant/provision.sh"
+        s.args = [node[:name], node[:ip]]
+      end
+    end
+  end
+end
