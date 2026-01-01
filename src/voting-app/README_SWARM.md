@@ -1,11 +1,38 @@
-## Docker Compose Swarm Setup for Voting App
+# Déploiement de l'application sur un cluster Docker Swarm
 
-```
+## 1. Objectif
+
+L’objectif de ce projet est de **déployer une application multi-services sur un cluster Docker Swarm**, composé de :
+
+* **1 nœud manager**
+* **2 nœuds worker**
+
+Le cluster est déployé localement à l’aide de **Vagrant** et **VirtualBox**, puis l’application est orchestrée via **Docker Swarm** à l’aide d’un fichier `docker-compose.yml` compatible Swarm.
+
+> Pour des raisons de commodité, le cluster n’est pas livré.
+> Ce document décrit **l’intégralité du processus de mise en place et de déploiement**.
+
+
+## 2. Pré-requis
+
+### 2.1 Outils nécessaires
+
+* **VirtualBox**
+  [https://www.virtualbox.org/wiki/Downloads](https://www.virtualbox.org/wiki/Downloads)
+* **Vagrant**
+  [https://www.vagrantup.com/docs/installation](https://www.vagrantup.com/docs/installation)
+* **Docker** (installé automatiquement sur les VM via Vagrant)
+
+### 2.2 Mise en place du docker-compose.yml
+
+Veillez vous assurer que le fichier `docker-compose.yml` correspond bien au contenu suivant pour s'assurer de la compatibilité avec Docker Swarm :
+
+```bash
 services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    command: [ "redis-server", "--appendonly", "yes" ]
     volumes:
       - redis_data:/data
     networks:
@@ -83,6 +110,7 @@ volumes:
   postgres_data:
   redis_data:
 
+
 networks:
   vote-redis-net:
     driver: overlay
@@ -91,45 +119,163 @@ networks:
   result-db-net:
     driver: overlay
 ```
+---
 
-## Instructions
+## 3. Mise en place du cluster Docker Swarm
 
-1. S'assurer d'avoir le bon Docker Compose
-2. S'assurer d'avoir VirtualBox et Vagrant d'installés
-   - Pour installer Vagrant : https://www.vagrantup.com/docs/installation
-   - Pour installer VirtualBox : https://www.virtualbox.org/wiki/Downloads
-3. Dans le dossier `src/voting-app`, lancer la commande `vagrant up` pour démarrer les machines virtuelles.
-4. Une fois les machines démarrées, vérifier que Docker est bien installé sur chaque machine avec la commande `docker --version`.
-5. Se connecter à la machine `manager1` avec la commande `vagrant ssh manager1`.
-6. Initialiser le Swarm avec la commande `docker swarm init --advertise-addr <manager1_ip>`.
-7. Récupérer la commande pour joindre les noeuds workers avec `docker swarm join-token worker` et exécuter cette commande sur chaque machine worker (`worker1` et `worker2`).
-8. Retourner sur la machine `manager1` et injecter les variables d'environnement nécessaires pour la base de données et les options de vote en utilisant:
-    1. 
-    ```bash 
-    cd /vagrant
-    nano .env
-    ```
-    2. Ajouter les variables environnements dans le fichier
-       1. Le .env doit contenir: 
-          1. `OPTION_A=VotreOption1`
-          2. `OPTION_B=VotreOption2`
-          3. `POSTGRES_USER=votre_utilisateur`
-          4. `POSTGRES_PASSWORD=votre_mot_de_passe`
-          5. `POSTGRES_DB=nom_de_la_base_de_donnees`
-    3. Sauvegarder avec `CTRL + O`, puis quitter avec `CTRL + X`.
-    4. Convertissez les variables dans le shell en version Unix:
-        ```bash
-        sudo apt-get install -y dos2unix
-        dos2unix .env
-        ```
-    5. Charger les variables dans le shell
-        ```bash
-        set -a
-        source .env
-        set +a
+### 3.1 Démarrage des machines virtuelles
 
-        ```
+Depuis le dossier du projet :
 
-9.  déployer la stack avec la commande `docker stack deploy -c docker-compose.yml votingapp`.
-10.  Vérifier que les services sont bien déployés avec la commande `docker stack services votingapp`, cela peut prendre quelques minutes.
-11.  Accéder à l'application de vote via `http://<manager1_ip>:8080` et à l'application de résultats via `http://<manager1_ip>:8081`. Ou par tout autre `<worker1_ip>` ou `<worker2_ip>`.
+```bash
+vagrant up
+```
+
+Cette commande démarre les 3 machines virtuelles :
+
+* `manager1`
+* `worker1`
+* `worker2`
+
+---
+
+### 3.2 Vérification de Docker
+
+Sur chaque machine :
+
+```bash
+docker --version
+```
+
+Cela permet de s’assurer que Docker est bien installé et fonctionnel.
+
+---
+
+### 3.3 Initialisation du Swarm (manager)
+
+Connexion au nœud manager :
+
+```bash
+vagrant ssh manager1
+```
+
+Initialisation du Swarm :
+
+```bash
+docker swarm init --advertise-addr <manager1_ip>
+```
+
+> *Note: l'ip `<manager1_ip>` peut être trouvé avec la commande est située dans le Vagranfile*
+
+---
+
+### 3.4 Ajout des nœuds workers
+
+Sur le manager, récupérer la commande d’adhésion :
+
+```bash
+docker swarm join-token worker
+```
+
+Exécuter ensuite cette commande sur :
+
+* `worker1`
+* `worker2`
+
+Une fois terminé, le cluster Swarm est opérationnel avec :
+
+* 1 manager
+* 2 workers
+
+---
+
+## 4. Configuration des variables d’environnement
+
+Docker Swarm ne lit pas automatiquement les fichiers `.env`.
+Il est donc nécessaire de charger manuellement les variables dans le shell avant le déploiement.
+
+### 4.1 Création du fichier `.env`
+
+Sur le nœud manager :
+
+```bash
+cd /vagrant
+nano .env
+```
+
+Contenu du fichier :
+
+```env
+OPTION_A=option_A
+OPTION_B=option_B
+
+POSTGRES_USER=votre_user
+POSTGRES_PASSWORD=votre_mot_de_passe
+POSTGRES_DB=votre_base_de_donnees
+```
+
+---
+
+### 4.2 Conversion au format Unix
+
+Les fichiers `.env` peuvent contenir des caractères Windows (`CRLF`), ce qui empêche leur chargement correct.
+
+```bash
+sudo apt-get install -y dos2unix
+dos2unix .env
+```
+
+---
+
+### 4.3 Chargement des variables dans le shell
+
+```bash
+set -a
+source .env
+set +a
+```
+
+Vérification (exemple) :
+
+```bash
+echo $POSTGRES_USER
+```
+
+---
+
+## 5. Déploiement de la stack Docker Swarm
+
+### 5.1 Déploiement de l’application
+
+Depuis le nœud manager :
+
+```bash
+docker stack deploy -c docker-compose.yml votingapp
+```
+
+---
+
+### 5.2 Vérification du déploiement
+
+```bash
+docker stack services votingapp
+```
+
+Les services peuvent mettre quelques minutes à devenir actifs.
+
+---
+
+## 6. Accès à l’application
+
+Une fois tous les services démarrés :
+
+* Application de vote :
+  `http://<manager1_ip>:8080`
+* Application de résultats :
+  `http://<manager1_ip>:8081`
+
+Les services étant exposés via Docker Swarm, l’accès fonctionne également depuis :
+
+* `worker1`
+* `worker2`
+
