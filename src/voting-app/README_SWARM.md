@@ -50,7 +50,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - type: bind
+        source: /vagrant/data/postgres
+        target: /var/lib/postgresql/data
     networks:
       - worker-backend-net
       - result-db-net
@@ -66,7 +68,7 @@ services:
     environment:
       OPTION_A: ${OPTION_A}
       OPTION_B: ${OPTION_B}
-      REDIS_HOST: redis
+      REDIS_HOST: ${REDIS_HOST}
     networks:
       - vote-redis-net
     deploy:
@@ -77,8 +79,8 @@ services:
   worker:
     image: biohazardye/worker:1.0
     environment:
-      REDIS_HOST: redis
-      POSTGRES_HOST: db
+      REDIS_HOST: ${REDIS_HOST}
+      POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -94,7 +96,7 @@ services:
     ports:
       - "8081:80"
     environment:
-      POSTGRES_HOST: db
+      POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -165,7 +167,7 @@ Initialisation du Swarm :
 docker swarm init --advertise-addr <manager1_ip>
 ```
 
-> *Note: l'ip `<manager1_ip>` peut être trouvé avec la commande est située dans le Vagranfile*
+> *Note: l'ip `<manager1_ip>` peut être trouvé dans le Vagranfile*
 
 ---
 
@@ -209,10 +211,15 @@ Contenu du fichier :
 OPTION_A=option_A
 OPTION_B=option_B
 
+REDIS_HOST=redis
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
 POSTGRES_USER=votre_user
 POSTGRES_PASSWORD=votre_mot_de_passe
 POSTGRES_DB=votre_base_de_donnees
 ```
+
+Sauvegarder avec `CTRL+O`, puis quitter avec `CTRL+X`.
 
 ---
 

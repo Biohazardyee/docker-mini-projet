@@ -20,20 +20,32 @@ Vagrant.configure("2") do |config|
       node.vm.provision "shell", privileged: true, inline: <<-SHELL
         set -e
 
-        # /etc/hosts pour la résolution des noms
-        #{NODES.map { |n, ip| "echo '#{ip} #{n}' >> /etc/hosts" }.join("\n")}
+        echo "Configuration de #{node_name}"
 
-        # Installer Docker (méthode officielle)
+        # ===============================
+        # Résolution DNS interne
+        # ===============================
+        #{NODES.map { |n, ip| "grep -qxF '#{ip} #{n}' /etc/hosts || echo '#{ip} #{n}' >> /etc/hosts" }.join("\n")}
+
+        # ===============================
+        # Installation Docker
+        # ===============================
         if ! command -v docker &> /dev/null; then
           curl -fsSL https://get.docker.com | sh
         fi
 
-        # Activer Docker au boot
         systemctl enable docker
         systemctl start docker
-
-        # Autoriser vagrant à utiliser Docker sans sudo
         usermod -aG docker vagrant
+
+        # ===============================
+        # PERSISTENCE DES DONNÉES (POSTGRES)
+        # ===============================
+        mkdir -p /vagrant/data/postgres
+        chown -R 999:999 /vagrant/data/postgres
+        chmod 700 /vagrant/data/postgres
+
+        echo "Provisioning terminé pour #{node_name}"
       SHELL
     end
   end
