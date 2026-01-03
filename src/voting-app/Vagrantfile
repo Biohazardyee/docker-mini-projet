@@ -1,52 +1,44 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
 NODES = {
   "manager1" => "192.168.99.100",
-  "worker1"  => "192.168.99.101",
-  "worker2"  => "192.168.99.102",
+  "worker1" => "192.168.99.101",
+  "worker2" => "192.168.99.102",
 }
 
 Vagrant.configure("2") do |config|
-  NODES.each do |node_name, ip_address|
+  NODES.each do |(node_name, ip_address)|
     config.vm.define node_name do |node|
-      node.vm.box = "bento/ubuntu-22.04"
+      node.vm.box = "bento/ubuntu-24.04"
       node.vm.hostname = node_name
       node.vm.network "private_network", ip: ip_address
 
       node.vm.provider "virtualbox" do |v|
         v.name = node_name
-        v.memory = 1024
-        v.cpus = 1
+        v.memory = "1024"
+        v.cpus = "1"
       end
 
-      node.vm.provision "shell", privileged: true, inline: <<-SHELL
-        set -e
+      node.vm.provision "shell", inline: <<-SHELL
+        # Faire en sorte que les machines puissent communiquer entre elles via leur hostnames (exemple: ping worker1 depuis manager1)
+        #{NODES.map{ |n_name, ip| "echo '#{ip} #{n_name}' | sudo tee -a /etc/hosts\n"}.join}
 
-        echo "Configuration de #{node_name}"
+        # Installer Docker
+        curl -fsSL get.docker.com -o get-docker.sh
+        CHANNEL=stable sh get-docker.sh
+        rm get-docker.sh
 
-        # ===============================
-        # Résolution DNS interne
-        # ===============================
-        #{NODES.map { |n, ip| "grep -qxF '#{ip} #{n}' /etc/hosts || echo '#{ip} #{n}' >> /etc/hosts" }.join("\n")}
-
-        # ===============================
-        # Installation Docker
-        # ===============================
-        if ! command -v docker &> /dev/null; then
-          curl -fsSL https://get.docker.com | sh
-        fi
-
-        systemctl enable docker
-        systemctl start docker
-        usermod -aG docker vagrant
-
-        # ===============================
-        # PERSISTENCE DES DONNÉES (POSTGRES)
-        # ===============================
-        mkdir -p /vagrant/data/postgres
-        chown -R 999:999 /vagrant/data/postgres
-        chmod 700 /vagrant/data/postgres
-
-        echo "Provisioning terminé pour #{node_name}"
+        # Faire en sorte que le daemon Docker soit accessible depuis l'hôte
+        sudo mkdir -p /etc/systemd/system/docker.service.d
+        sudo bash -c 'echo -e "[Service]\nExecStart=\nExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:2375" > /etc/systemd/system/docker.service.d/options.conf'
+        sudo systemctl daemon-reload
+        sudo systemctl restart docker.service
       SHELL
+
+      node.vm.provision "docker" do |d|
+        d.pull_images "alpine:latest"
+      end
     end
   end
 end

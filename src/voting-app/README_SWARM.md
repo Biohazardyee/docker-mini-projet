@@ -7,7 +7,7 @@ L’objectif de ce projet est de **déployer une application multi-services sur 
 * **1 nœud manager**
 * **2 nœuds worker**
 
-Le cluster est déployé localement à l’aide de **Vagrant** et **VirtualBox**, puis l’application est orchestrée via **Docker Swarm** à l’aide d’un fichier `docker-compose.yml` compatible Swarm.
+Le cluster est déployé localement à l’aide de **Vagrant** et **VirtualBox**, puis l’application est orchestrée via **Docker Swarm** à l’aide d’un fichier `docker-compose.swarm.yml` compatible Swarm.
 
 > Pour des raisons de commodité, le cluster n’est pas livré.
 > Ce document décrit **l’intégralité du processus de mise en place et de déploiement**.
@@ -23,104 +23,6 @@ Le cluster est déployé localement à l’aide de **Vagrant** et **VirtualBox**
   [https://www.vagrantup.com/docs/installation](https://www.vagrantup.com/docs/installation)
 * **Docker** (installé automatiquement sur les VM via Vagrant)
 
-### 2.2 Mise en place du docker-compose.yml
-
-Veillez vous assurer que le fichier `docker-compose.yml` correspond bien au contenu suivant pour s'assurer de la compatibilité avec Docker Swarm :
-
-```bash
-services:
-
-  redis:
-    image: redis:7-alpine
-    command: [ "redis-server", "--appendonly", "yes" ]
-    volumes:
-      - redis_data:/data
-    networks:
-      - vote-redis-net
-      - worker-backend-net
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - type: bind
-        source: /vagrant/data/postgres
-        target: /var/lib/postgresql/data
-    networks:
-      - worker-backend-net
-      - result-db-net
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-
-  vote:
-    image: biohazardye/vote:1.0
-    ports:
-      - "8080:8080"
-    environment:
-      OPTION_A: ${OPTION_A}
-      OPTION_B: ${OPTION_B}
-      REDIS_HOST: ${REDIS_HOST}
-    networks:
-      - vote-redis-net
-    deploy:
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-
-  worker:
-    image: biohazardye/worker:1.0
-    environment:
-      REDIS_HOST: ${REDIS_HOST}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    networks:
-      - worker-backend-net
-    deploy:
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-
-  result:
-    image: biohazardye/result:1.0
-    ports:
-      - "8081:80"
-    environment:
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-    networks:
-      - result-db-net
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-
-volumes:
-  postgres_data:
-  redis_data:
-
-
-networks:
-  vote-redis-net:
-    driver: overlay
-  worker-backend-net:
-    driver: overlay
-  result-db-net:
-    driver: overlay
-```
 ---
 
 ## 3. Mise en place du cluster Docker Swarm
@@ -204,20 +106,7 @@ Sur le nœud manager :
 cd /vagrant
 nano .env
 ```
-
-Contenu du fichier :
-
-```env
-OPTION_A=option_A
-OPTION_B=option_B
-
-REDIS_HOST=redis
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
-POSTGRES_USER=votre_user
-POSTGRES_PASSWORD=votre_mot_de_passe
-POSTGRES_DB=votre_base_de_donnees
-```
+Pour ce qui est du contenu du fichier, il vous suffit de reprendre le fichier `.env` que vous avez créé en local.
 
 Sauvegarder avec `CTRL+O`, puis quitter avec `CTRL+X`.
 
