@@ -109,6 +109,10 @@ dos2unix .env
 ### 4.2 Chargement des variables dans le shell
 
 ```bash
+cd /vagrant
+```
+
+```bash
 set -a
 source .env
 set +a
