@@ -95,11 +95,6 @@ Une fois terminé, le cluster Swarm est opérationnel avec :
 
 ## 4. Configuration des variables d’environnement
 
-Docker Swarm ne lit pas automatiquement les fichiers `.env`.
-Il est donc nécessaire de charger manuellement les variables dans le shell avant le déploiement.
-
----
-
 ### 4.1 Conversion au format Unix
 
 Les fichiers `.env` peuvent contenir des caractères Windows (`CRLF`), ce qui empêche leur chargement correct.
