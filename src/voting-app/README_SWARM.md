@@ -98,21 +98,9 @@ Une fois terminé, le cluster Swarm est opérationnel avec :
 Docker Swarm ne lit pas automatiquement les fichiers `.env`.
 Il est donc nécessaire de charger manuellement les variables dans le shell avant le déploiement.
 
-### 4.1 Création du fichier `.env`
-
-Sur le nœud manager :
-
-```bash
-cd /vagrant
-nano .env
-```
-Pour ce qui est du contenu du fichier, il vous suffit de reprendre le fichier `.env` que vous avez créé en local.
-
-Sauvegarder avec `CTRL+O`, puis quitter avec `CTRL+X`.
-
 ---
 
-### 4.2 Conversion au format Unix
+### 4.1 Conversion au format Unix
 
 Les fichiers `.env` peuvent contenir des caractères Windows (`CRLF`), ce qui empêche leur chargement correct.
 
@@ -123,7 +111,7 @@ dos2unix .env
 
 ---
 
-### 4.3 Chargement des variables dans le shell
+### 4.2 Chargement des variables dans le shell
 
 ```bash
 set -a
@@ -146,7 +134,7 @@ echo $POSTGRES_USER
 Depuis le nœud manager :
 
 ```bash
-docker stack deploy -c docker-compose.yml votingapp
+docker stack deploy -c docker-compose.swarm.yml votingapp
 ```
 
 ---
