@@ -12,6 +12,9 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
 
   db:
     image: postgres:16-alpine
@@ -28,6 +31,9 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
 
   vote:
     image: biohazardye/vote:1.0
@@ -55,7 +61,7 @@ services:
     networks:
       - worker-backend-net
     deploy:
-      replicas: 2
+      replicas: 1
       restart_policy:
         condition: on-failure
 
@@ -72,7 +78,7 @@ services:
     networks:
       - result-db-net
     deploy:
-      replicas: 1
+      replicas: 2
       restart_policy:
         condition: on-failure
 
