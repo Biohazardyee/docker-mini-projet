@@ -7,7 +7,7 @@ Il repose sur une architecture micro-services et a été entièrement **conteneu
 
 L’objectif est de remplacer un déploiement initial basé sur des scripts bash par une solution moderne utilisant les bonnes pratiques de conteneurisation et d’orchestration.
 
-Lien GitHub: [Projet](https://github.com/Biohazardyee/docker-mini-projet)
+Lien GitHub: [https://github.com/Biohazardyee/docker-mini-projet](https://github.com/Biohazardyee/docker-mini-projet)
 ---
 
 ## 🧩 Architecture de l’application
